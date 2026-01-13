@@ -1,0 +1,10 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Disallow specific paths if needed
+# Disallow: /api/
+# Disallow: /_next/
+
+# Sitemap
+Sitemap: https://image-editor-clone-liart.vercel.app/sitemap.xml
