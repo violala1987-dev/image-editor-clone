@@ -9,6 +9,57 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Upload, Sparkles, Loader2, AlertCircle } from "lucide-react"
 
+// 图片压缩函数
+const compressImage = (
+  file: File,
+  maxWidth: number = 1024,
+  maxHeight: number = 1024,
+  quality: number = 0.8
+): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onload = (event) => {
+      const img = new Image()
+      img.src = event.target?.result as string
+      img.onload = () => {
+        // 计算新尺寸
+        let width = img.width
+        let height = img.height
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width
+            width = maxWidth
+          }
+        } else {
+          if (height > maxHeight) {
+            width = (width * maxHeight) / height
+            height = maxHeight
+          }
+        }
+
+        // 创建 canvas 并压缩
+        const canvas = document.createElement("canvas")
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext("2d")
+        if (!ctx) {
+          reject(new Error("无法获取 canvas context"))
+          return
+        }
+        ctx.drawImage(img, 0, 0, width, height)
+
+        // 转换为 base64，使用 JPEG 格式和指定质量
+        const compressedDataUrl = canvas.toDataURL("image/jpeg", quality)
+        resolve(compressedDataUrl)
+      }
+      img.onerror = () => reject(new Error("图片加载失败"))
+    }
+    reader.onerror = () => reject(new Error("文件读取失败"))
+  })
+}
+
 export function EditorSection() {
   const [prompt, setPrompt] = useState("")
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
@@ -16,15 +67,34 @@ export function EditorSection() {
   const [rawContent, setRawContent] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isCompressing, setIsCompressing] = useState(false)
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setUploadedImage(reader.result as string)
+      setIsCompressing(true)
+      setError(null)
+
+      try {
+        // 检查文件大小（5MB 限制）
+        if (file.size > 5 * 1024 * 1024) {
+          throw new Error("图片大小超过 5MB 限制")
+        }
+
+        // 压缩图片
+        const compressedImage = await compressImage(file, 1024, 1024, 0.8)
+
+        // 计算压缩后的大小
+        const compressedSizeInMB = (compressedImage.length * 0.75) / (1024 * 1024)
+        console.log(`原始大小: ${(file.size / 1024 / 1024).toFixed(2)}MB`)
+        console.log(`压缩后大小: ${compressedSizeInMB.toFixed(2)}MB`)
+
+        setUploadedImage(compressedImage)
+      } catch (err: any) {
+        setError(err.message || "图片处理失败")
+      } finally {
+        setIsCompressing(false)
       }
-      reader.readAsDataURL(file)
     }
   }
 
@@ -136,9 +206,19 @@ export function EditorSection() {
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          <Upload className="w-12 h-12 mx-auto text-muted-foreground" />
-                          <p className="text-sm font-medium">Click to upload image</p>
-                          <p className="text-xs text-muted-foreground">Max 10MB</p>
+                          {isCompressing ? (
+                            <>
+                              <Loader2 className="w-12 h-12 mx-auto text-muted-foreground animate-spin" />
+                              <p className="text-sm font-medium">正在压缩图片...</p>
+                              <p className="text-xs text-muted-foreground">请稍候</p>
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-12 h-12 mx-auto text-muted-foreground" />
+                              <p className="text-sm font-medium">Click to upload image</p>
+                              <p className="text-xs text-muted-foreground">Max 5MB, 自动压缩到 1MB 以内</p>
+                            </>
+                          )}
                         </div>
                       )}
                     </label>
@@ -163,7 +243,7 @@ export function EditorSection() {
                   className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
                   size="lg"
                   onClick={handleGenerate}
-                  disabled={isLoading || !uploadedImage || !prompt.trim()}
+                  disabled={isLoading || isCompressing || !uploadedImage || !prompt.trim()}
                 >
                   {isLoading ? (
                     <>
