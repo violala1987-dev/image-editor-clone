@@ -51,29 +51,29 @@ export function EditorSection() {
         }),
       })
 
-      // 先检查响应状态
+      // 先读取响应文本（只能读取一次）
+      const responseText = await response.text()
+
+      // 检查响应状态
       if (!response.ok) {
-        // 尝试解析为 JSON，如果失败则使用文本
+        // 尝试解析为 JSON，如果失败则使用原始文本
         let errorMessage = "生成失败"
         try {
-          const data = await response.json()
+          const data = JSON.parse(responseText)
           errorMessage = data.details || data.error || errorMessage
         } catch {
-          // 如果不是 JSON，读取文本
-          const text = await response.text()
-          errorMessage = text || `服务器错误 (${response.status})`
+          // 如果不是 JSON，使用原始文本
+          errorMessage = responseText || `服务器错误 (${response.status})`
         }
         throw new Error(errorMessage)
       }
 
-      // 解析成功的响应
+      // 解析成功的响应为 JSON
       let data
       try {
-        data = await response.json()
+        data = JSON.parse(responseText)
       } catch (parseError) {
-        // 如果响应不是 JSON
-        const text = await response.text()
-        throw new Error(`服务器返回了非 JSON 格式的响应: ${text.substring(0, 200)}`)
+        throw new Error(`服务器返回了非 JSON 格式的响应: ${responseText.substring(0, 200)}`)
       }
 
       console.log("API 响应数据:", data)
