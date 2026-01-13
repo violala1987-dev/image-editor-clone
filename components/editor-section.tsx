@@ -51,10 +51,29 @@ export function EditorSection() {
         }),
       })
 
-      const data = await response.json()
-
+      // 先检查响应状态
       if (!response.ok) {
-        throw new Error(data.details || data.error || "生成失败")
+        // 尝试解析为 JSON，如果失败则使用文本
+        let errorMessage = "生成失败"
+        try {
+          const data = await response.json()
+          errorMessage = data.details || data.error || errorMessage
+        } catch {
+          // 如果不是 JSON，读取文本
+          const text = await response.text()
+          errorMessage = text || `服务器错误 (${response.status})`
+        }
+        throw new Error(errorMessage)
+      }
+
+      // 解析成功的响应
+      let data
+      try {
+        data = await response.json()
+      } catch (parseError) {
+        // 如果响应不是 JSON
+        const text = await response.text()
+        throw new Error(`服务器返回了非 JSON 格式的响应: ${text.substring(0, 200)}`)
       }
 
       console.log("API 响应数据:", data)

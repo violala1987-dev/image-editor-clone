@@ -12,6 +12,17 @@ const openai = new OpenAI({
 
 export async function POST(req: NextRequest) {
   try {
+    // 检查环境变量
+    if (!process.env.OPENROUTER_API_KEY) {
+      return NextResponse.json(
+        {
+          error: "API 配置错误",
+          details: "服务器未配置 OpenRouter API Key。请在 Vercel 环境变量中设置 OPENROUTER_API_KEY。",
+        },
+        { status: 500 }
+      )
+    }
+
     const { image, prompt } = await req.json()
 
     if (!image || !prompt) {
@@ -80,10 +91,25 @@ export async function POST(req: NextRequest) {
     })
   } catch (error: any) {
     console.error("生成图片时出错:", error)
+
+    // 提取详细的错误信息
+    let errorMessage = "生成图片失败"
+    let errorDetails = error?.message || "未知错误"
+
+    // 处理 OpenAI SDK 错误
+    if (error?.response) {
+      errorDetails = `API 错误: ${error.response.status} - ${JSON.stringify(error.response.data)}`
+    } else if (error?.code === "ENOTFOUND") {
+      errorDetails = "无法连接到 API 服务器，请检查网络连接"
+    } else if (error?.message) {
+      errorDetails = error.message
+    }
+
     return NextResponse.json(
       {
-        error: "生成图片失败",
-        details: error.message || "未知错误",
+        error: errorMessage,
+        details: errorDetails,
+        type: error?.constructor?.name || "Error",
       },
       { status: 500 }
     )
