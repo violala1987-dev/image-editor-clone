@@ -1,14 +1,20 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { createClient } from "@/lib/supabase/server"
 import { GoogleSignInButton } from "@/components/auth-button"
 import { UserMenu } from "@/components/user-menu"
 
 export async function Header() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  let user = null
+
+  try {
+    const { createClient } = await import("@/lib/supabase/server")
+    const supabase = await createClient()
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  } catch (error) {
+    // Supabase not configured, user remains null
+    console.debug('Supabase not configured:', error)
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
