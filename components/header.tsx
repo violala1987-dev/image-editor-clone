@@ -1,7 +1,15 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { createClient } from "@/lib/supabase/server"
+import { GoogleSignInButton } from "@/components/auth-button"
+import { UserMenu } from "@/components/user-menu"
 
-export function Header() {
+export async function Header() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -30,12 +38,11 @@ export function Header() {
           </nav>
 
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm">
-              Sign In
-            </Button>
-            <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90">
-              Try Free
-            </Button>
+            {user ? (
+              <UserMenu />
+            ) : (
+              <GoogleSignInButton />
+            )}
           </div>
         </div>
       </div>
