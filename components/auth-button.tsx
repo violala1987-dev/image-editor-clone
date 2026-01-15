@@ -5,15 +5,17 @@ import { Button } from '@/components/ui/button'
 import { LogOut } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { useToast } from '@/hooks/use-toast'
 
 export function GoogleSignInButton() {
-  const supabase = createClient()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const { toast } = useToast()
 
   const handleSignIn = async () => {
     setLoading(true)
     try {
+      const supabase = createClient()
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -23,9 +25,19 @@ export function GoogleSignInButton() {
 
       if (error) {
         console.error('Error signing in:', error)
+        toast({
+          title: "登录失败",
+          description: error.message || "无法连接到 Google 登录服务",
+          variant: "destructive",
+        })
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error:', error)
+      toast({
+        title: "功能未配置",
+        description: "Google 登录功能尚未配置。请联系管理员配置 Supabase。",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
